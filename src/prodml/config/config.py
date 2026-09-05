@@ -7,13 +7,15 @@ class Settings(BaseSettings):
     app_name: str = "mlops"
     app_version: str = "0.0.1v"
     random_forest_model_path = (
-        Path(__file__).parent.parent / "models" / "rf_baseline.pkl"
+        Path(__file__).parent.parent.parent.parent / "models" / "rf_baseline.pkl"
     )
-    linear_regressin_model_path = (
-        Path(__file__).parent.parent / "models" / "lr_baseline.pkl"
+    linear_regression_model_path = (
+        Path(__file__).parent.parent.parent.parent / "models" / "lr_baseline.pkl"
     )
     dataset_path = (
-        Path(__file__).parent.parent / "data" / "green_tripdata_2026-05.parquet"
+        Path(__file__).parent.parent.parent.parent
+        / "data"
+        / "green_tripdata_2026-05.parquet"
     )
 
     class Config:

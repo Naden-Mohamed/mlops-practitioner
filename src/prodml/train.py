@@ -8,6 +8,8 @@ from prodml.config.config import get_settings
 from prodml.data import Data
 from prodml.features import FeaturePipeline
 
+settings = get_settings()
+
 
 class ModelTrainer:
     def run_training(self, data_path: str):
@@ -23,7 +25,7 @@ class ModelTrainer:
         lr.fit(X, np.asarray(y))
 
         y_pred = lr.predict(X)
-        self.save_model("lr_baseline.pkl", pipeline, lr)
+        self.save_model(settings.linear_regression_model_path, pipeline, lr)
         print(f"Train RMSE: {root_mean_squared_error(np.asarray(y), y_pred):.4f}")
 
         print("Exported pipeline and estimator state cleanly.")

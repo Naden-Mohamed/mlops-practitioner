@@ -15,7 +15,7 @@ def timed(func):
         result = func(*args, **kwargs)
         end_time = time.perf_counter()
 
-        execution_time = start_time - end_time
+        execution_time = end_time - start_time
         logger.info(
             f"Function '{func.__name__}' executed in {execution_time:.6f} seconds."
         )

@@ -10,7 +10,7 @@ class JSONLoggingFormatter(logging.Formatter):
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "name": record.name,
             "level": record.levelname,
-            "logger": record.getMessage(),
+            "message": record.getMessage(),
             "correlation_id": get_correlation_id(),
         }
 

@@ -11,4 +11,4 @@ class PredictionResponse(BaseModel):
     model_version: str
     correlation_id: str
     latency_ms: float
-    batch_variants: int
+    batch_variants: int | None = None

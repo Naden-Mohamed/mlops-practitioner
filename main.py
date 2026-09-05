@@ -1,32 +1,41 @@
 import time
 import logging
 from fastapi import FastAPI, HTTPException
-from prodml.api.middleware import CorellationIDMiddleware
+from prodml.api.middleware import CorrelationIDMiddleware
 from prodml.config.logging_conf import setup_logging
-from prodml.api.schemas import PredictRequest
+from prodml.api.schemas import PredictRequest, PredictionResponse
 from contextlib import asynccontextmanager
+from prodml.predict import DurationPredictor
+from prodml.config.config import get_settings
 
-
+settings = get_settings()
 setup_logging()
 logger = logging.getLogger("prodml.api")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    duration_predictor = DurationPredictor(
+        model_bundle_path=settings.linear_regression_model_path
+    )
+    app.state.feature_pipeline, app.state.model = duration_predictor.load()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(CorellationIDMiddleware)
+app.add_middleware(CorrelationIDMiddleware)
 
 
-@app.post("/health")
+@app.get("/health")
 def check_health():
-    return {"status": "Healthy"}
+    if app.state.model:
+        return {"status": "Healthy"}
+    else:
+        return {"status": "model is not loaded"}
 
 
 @app.post("/predict")
-async def predict(data: PredictRequest) -> dict[str, float]:
+async def predict(data: PredictRequest) -> PredictionResponse:
     start_time = time.perf_counter()
 
     if data.trip_distance > 100:
@@ -42,7 +51,7 @@ async def predict(data: PredictRequest) -> dict[str, float]:
     )
 
     try:
-        prediction = data.trip_distance * 2.5
+        prediction = app.state.model.predict(features)
     except Exception:
         logger.exception("Model prediction failure")
         raise HTTPException(status_code=500, detail="Prediction failed")
@@ -59,4 +68,9 @@ async def predict(data: PredictRequest) -> dict[str, float]:
         },
     )
 
-    return {"prediction": prediction}
+    return PredictionResponse(
+        prediction=prediction,
+        model_version=app.state.model.name,
+        correlation_id="",
+        latency_ms=latency_ms,
+    )
