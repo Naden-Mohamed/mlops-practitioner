@@ -1,10 +1,12 @@
-from typing import cast
+from typing import Any, cast
 
+import numpy as np
 from onnx import ModelProto
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 
 from prodml.config.config import get_settings
+from prodml.features import FeaturePipeline
 from prodml.predict import DurationPredictor
 
 
@@ -21,6 +23,13 @@ def export_to_onnx(pickly_path: str, onnx_path: str):
         f.write(onnx_model.SerializeToString())
 
     return onnx_model
+
+
+def vectorize_for_onnx(feature_pipeline: FeaturePipeline, raw_df) -> np.ndarray:
+    """Run the (non-ONNX) DictVectorizer step and densify for onnxruntime."""
+    X = feature_pipeline.transform(raw_df)
+    dense_X = cast(Any, X).toarray() if hasattr(X, "toarray") else X
+    return np.asarray(dense_X, dtype=np.float32)
 
 
 if __name__ == "__main__":
