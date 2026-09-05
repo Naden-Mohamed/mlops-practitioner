@@ -1,14 +1,15 @@
 import logging
-from fastapi import FastAPI, Request
-from prodml.api.middleware import CorrelationIDMiddleware
-from prodml.config.logging_conf import setup_logging
 from contextlib import asynccontextmanager
-from prodml.predict import DurationPredictor
-from prodml.config.config import get_settings
+
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from prodml.config.logging_conf import get_correlation_id
+from prodml.api.middleware import CorrelationIDMiddleware
 from prodml.api.routes import route
+from prodml.config.config import get_settings
+from prodml.config.logging_conf import get_correlation_id
+from prodml.config.logging_conf import setup_logging
+from prodml.predict import DurationPredictor
 
 settings = get_settings()
 setup_logging()

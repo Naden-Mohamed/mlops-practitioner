@@ -17,6 +17,9 @@ class Settings(BaseSettings):
         / "data"
         / "green_tripdata_2026-05.parquet"
     )
+    onnx_model_path = (
+        Path(__file__).parent.parent.parent.parent / "models" / "lr_baseline.onnx"
+    )
 
     class Config:
         env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
