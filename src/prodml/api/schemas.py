@@ -9,6 +9,6 @@ class PredictRequest(BaseModel):
 class PredictionResponse(BaseModel):
     prediction: float
     model_version: str
-    correlation_id: str
+    correlation_id: str | None = None
     latency_ms: float
     batch_variants: int | None = None

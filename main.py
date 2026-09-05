@@ -1,12 +1,14 @@
-import time
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from prodml.api.middleware import CorrelationIDMiddleware
 from prodml.config.logging_conf import setup_logging
-from prodml.api.schemas import PredictRequest, PredictionResponse
 from contextlib import asynccontextmanager
 from prodml.predict import DurationPredictor
 from prodml.config.config import get_settings
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from prodml.config.logging_conf import get_correlation_id
+from prodml.api.routes import route
 
 settings = get_settings()
 setup_logging()
@@ -24,53 +26,49 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(CorrelationIDMiddleware)
+app.include_router(route)
 
 
-@app.get("/health")
-def check_health():
-    if app.state.model:
-        return {"status": "Healthy"}
-    else:
-        return {"status": "model is not loaded"}
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = [
+        {
+            "field": ".".join(str(p) for p in err["loc"] if p != "body"),
+            "message": err["msg"],
+        }
+        for err in exc.errors()
+    ]
 
-
-@app.post("/predict")
-async def predict(data: PredictRequest) -> PredictionResponse:
-    start_time = time.perf_counter()
-
-    if data.trip_distance > 100:
-        logger.warning(
-            "Input value outside expected training bounds",
-            extra={"extra_fields": {"trip_distance": data.trip_distance}},
-        )
-
-    features = [data.trip_distance, data.passenger_count]
-    logger.debug(
-        "Extracted feature vector for prediction",
-        extra={"extra_fields": {"features": features}},
+    logger.warning(
+        "Validation error",
+        extra={"extra_info": {"errors": errors, "path": request.url.path}},
     )
-
-    try:
-        prediction = app.state.model.predict(features)
-    except Exception:
-        logger.exception("Model prediction failure")
-        raise HTTPException(status_code=500, detail="Prediction failed")
-
-    latency_ms = (time.perf_counter() - start_time) * 1000
-
-    logger.info(
-        "Prediction served successfully",
-        extra={
-            "extra_fields": {
-                "prediction": prediction,
-                "latency_ms": round(latency_ms, 2),
-            }
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "validation_error",
+            "detail": errors,
+            "correlation_id": get_correlation_id(),
         },
     )
 
-    return PredictionResponse(
-        prediction=prediction,
-        model_version=app.state.model.name,
-        correlation_id="",
-        latency_ms=latency_ms,
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(
+        "Unhandled exception",
+        extra={"extra_fields": {"path": request.url.path}},
     )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "internal_server_error",
+            "detail": "An unexpected error occurred. Please try again shortly.",
+            "correlation_id": get_correlation_id(),
+        },
+    )
+
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the main API entrypoint!"}
